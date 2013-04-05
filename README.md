@@ -15,6 +15,8 @@ callback as the last argument of your async function.
 ## Quick Examples
 
 ```javascript
+Component.utils.import("resource://gre/modules/Async.jsm");
+
 Async.map(["file1","file2","file3"], fs.stat, function(err, results){
   // results is now an array of stats for each file
 });
