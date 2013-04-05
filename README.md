@@ -81,7 +81,7 @@ async.map([1, 2, 3], AsyncSquaringLibrary.square.bind(AsyncSquaringLibrary), fun
 The source is available for download from
 [GitHub](http://github.com/mikedeboer/mosAsync).
 
-__Development:__ [async.jsm](https://github.com/mikedeboer/mozAsync/raw/master/lib/async.jsm) - 29.6kb Uncompressed
+__Development:__ [async.jsm](https://github.com/mikedeboer/mozAsync/raw/master/lib/async.jsm) - 21K Uncompressed
 
 ## Documentation
 
@@ -124,7 +124,6 @@ __Development:__ [async.jsm](https://github.com/mikedeboer/mozAsync/raw/master/l
 * [memoize](#memoize)
 * [unmemoize](#unmemoize)
 * [log](#log)
-* [dir](#dir)
 
 
 ## Collections
