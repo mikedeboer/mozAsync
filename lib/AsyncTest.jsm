@@ -49,10 +49,12 @@ function log(aMsg) {
 
 function Suite(aTests) {
   this.tests = aTests;
+  var firstTest = aTests[0];
   var def = exports.AsyncTestReporters[exports.AsyncTest.DEFAULT_REPORTER];
-  this.reporter = exports.AsyncTestReporters[aTests[0].reporter] || def;
-  this.name = aTests[0].suiteName;
-  this.notify = aTests[0].notify;
+  this.reporter = exports.AsyncTestReporters[firstTest.reporter] || def;
+  this.name = firstTest.suiteName;
+  this.notify = firstTest.notify;
+  this.onEnd = firstTest.onEnd || function() {};
   this.stats = {
     start: new Date(),
     tests: aTests.length,
@@ -159,6 +161,8 @@ Suite.prototype = {
           // prevents runtime error on platforms that don't implement nsIAlertsService
         }
       }
+      // defer firing the onEnd callback to allow writing to stdout to finish
+      Async.setImmediate(this.onEnd.bind(this));
     }
 
     this.reporter(aState, aTest, this);
@@ -166,6 +170,14 @@ Suite.prototype = {
 };
 
 exports.AsyncTest = function(aSuite) {
+  if (Array.isArray(aSuite)) {
+    Async.eachSeries(aSuite, function(suite, callback) {
+      suite.onEnd = callback;
+      exports.AsyncTest(suite);
+    }, function() {});
+    return;
+  }
+
   if (!aSuite)
     throw new Error("A suite is required!");
   if (!aSuite.tests)
@@ -173,8 +185,8 @@ exports.AsyncTest = function(aSuite) {
 
   var methods = Object.keys(aSuite.tests);
 
-  var setUp = aSuite.tests.setUp || null;
-  var tearDown = aSuite.tests.tearDown || null;
+  var setUp = aSuite.setUp || null;
+  var tearDown = aSuite.tearDown || null;
 
   var single;
   methods.forEach(function(name) {
@@ -191,6 +203,7 @@ exports.AsyncTest = function(aSuite) {
   var i = 1;
   var suite = new Suite(testNames.map(function(name) {
     var skip = name.charAt(0) === "!";
+    console.log("TACK TEARDOWNSUITE?",(i == testNames.length && aSuite.tearDownSuite));
     return {
       suiteName: aSuite.name || aSuite.tests.name || "",
       reporter: aSuite.reporter,
@@ -202,14 +215,15 @@ exports.AsyncTest = function(aSuite) {
       timeout: aSuite.timeout || aSuite.tests.timeout || 3000,
       fn: aSuite.tests[name],
       count: count,
-      setUpSuite: i - 1 == 0 && aSuite.setUp
-        ? makeAsync(0, aSuite.setUp, aSuite)
+      setUpSuite: i - 1 == 0 && aSuite.setUpSuite
+        ? makeAsync(0, aSuite.setUpSuite, aSuite.tests)
         : empty,
-      tearDownSuite: i == testNames.length && aSuite.tearDown
-        ? makeAsync(0, aSuite.tearDown, aSuite)
+      tearDownSuite: i == testNames.length && aSuite.tearDownSuite
+        ? makeAsync(0, aSuite.tearDownSuite, aSuite.tests)
         : empty,
       skip: skip,
-      index: i++
+      index: i++,
+      onEnd: aSuite.onEnd || function() {}
     };
   }));
   
