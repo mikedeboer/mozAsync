@@ -4,11 +4,19 @@
 
 "use strict";
 
-this.EXPORTED_SYMBOLS = [
-  "Async"
-];
+var exports;
+if (typeof require == "function") {
+  exports = module.exports;
+}
+else {
+  exports = this;
 
-this.Async = (function() {
+  exports.EXPORTED_SYMBOLS = [
+    "Async"
+  ];
+}
+
+exports.Async = (function() {
 
   var async = {};
 
@@ -399,7 +407,7 @@ this.Async = (function() {
 
   async.waterfall = function(tasks, callback) {
     callback = callback || function() {};
-    if (Array.isArray(tasks)) {
+    if (!Array.isArray(tasks)) {
       var err = new Error("First argument to waterfall must be an array of functions");
       return callback(err);
     }
@@ -602,7 +610,7 @@ this.Async = (function() {
       concurrency = 1;
     }
     function _insert(q, data, pos, callback) {
-      if (Array.isArray(data)) {
+      if (!Array.isArray(data)) {
         data = [data];
       }
       data.forEach(function(task) {
@@ -679,7 +687,7 @@ this.Async = (function() {
         empty: null,
         drain: null,
         push: function(data, callback) {
-          if (Array.isArray(data)) {
+          if (!Array.isArray(data)) {
             data = [data];
           }
           data.forEach(function(task) {
@@ -740,12 +748,13 @@ this.Async = (function() {
     var args = slice.call(arguments, 1);
     fn.apply(null, args.concat([function(err) {
       var args = slice.call(arguments, 1);
+      var log = typeof dump == "function" ? dump : console.log.bind(console);
       if (err) {
-        dump("ERR: " + err + "\n");
+        log("ERR: " + err + "\n");
       }
       else {
         args.forEach(function(x) {
-          dump(JSON.stringify(x) + "\n");
+          log(JSON.stringify(x) + "\n");
         });
       }
     }]));
