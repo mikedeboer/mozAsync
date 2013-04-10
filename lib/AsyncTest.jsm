@@ -22,8 +22,7 @@ else {
 function makeAsync(args, fn, context) {
   if (fn.length > args) {
     return fn;
-  }
-  else {
+  } else {
     return function() {
       var value;
       var next = arguments[args];
@@ -113,8 +112,7 @@ Suite.prototype = {
               clearTimeout(timeout);
               callback(err);
             });
-          }
-          catch (ex) {
+          } catch (ex) {
             if (called)
               return;
             called = true;
@@ -145,8 +143,7 @@ Suite.prototype = {
         this.stats.passes++;
       else
         this.stats.failures++;
-    }
-    else if (aState & Suite.STATE_END) {
+    } else if (aState & Suite.STATE_END) {
       this.stats.duration = new Date() - this.stats.start;
       if (this.notify) {
         var title = this.name || "Tests finished!";
