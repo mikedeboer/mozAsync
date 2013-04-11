@@ -2,10 +2,9 @@
 
 Async is a utility module which provides straight-forward, powerful functions
 for working with asynchronous JavaScript. Although originally designed for
-use with [node.js](http://nodejs.org), it has been modified to be used directly
-in Mozilla source code.
+use with [node.js](http://nodejs.org), it has been modified to be used directly in Mozilla source code.
 
-Async provides around 20 functions that include the usual "functional'
+Async provides around 20 functions that include the usual "functional"
 suspects (map, reduce, filter, each…) as well as some common patterns
 for asynchronous control flow (parallel, series, waterfall…). All these
 functions assume you follow the node.js convention of providing a single
@@ -79,9 +78,9 @@ async.map([1, 2, 3], AsyncSquaringLibrary.square.bind(AsyncSquaringLibrary), fun
 ## Download
 
 The source is available for download from
-[GitHub](http://github.com/mikedeboer/mosAsync).
+[GitHub](http://github.com/mikedeboer/mozAsync).
 
-__Development:__ [async.jsm](https://github.com/mikedeboer/mozAsync/raw/master/lib/async.jsm) - 21K Uncompressed
+__Development:__ [async.jsm](https://github.com/mikedeboer/mozAsync/raw/master/lib/Async.jsm) - 21K Uncompressed
 
 ## Documentation
 
