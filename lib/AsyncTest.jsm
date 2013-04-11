@@ -203,7 +203,6 @@ exports.AsyncTest = function(aSuite) {
   var i = 1;
   var suite = new Suite(testNames.map(function(name) {
     var skip = name.charAt(0) === "!";
-    console.log("TACK TEARDOWNSUITE?",(i == testNames.length && aSuite.tearDownSuite));
     return {
       suiteName: aSuite.name || aSuite.tests.name || "",
       reporter: aSuite.reporter,
