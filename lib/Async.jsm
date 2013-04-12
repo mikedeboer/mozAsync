@@ -2,18 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-"use strict";
-
 var exports;
-if (typeof require == "function") {
-  exports = module.exports;
-}
-else {
+var isGecko = !!(typeof Components != "undefined" && Components.utils);
+if (isGecko) {
   exports = this;
-
   exports.EXPORTED_SYMBOLS = [
     "Async"
   ];
+}
+else {
+  exports = module.exports;
 }
 
 exports.Async = (function() {
@@ -35,9 +33,29 @@ exports.Async = (function() {
 
   //// exported async module functions ////
 
-  async.setImmediate = function(fn) {
-    setTimeout(fn, 0);
+  async.setImmediate = function(fn, delay) {
+    delay = delay || 0;
+    if (isGecko) {
+      var timer = Components.classes["@mozilla.org/timer;1"].createInstance(Components.interfaces.nsITimer);
+      timer.initWithCallback(fn, delay, Components.interfaces.nsITimer.TYPE_ONE_SHOT);
+      return timer;
+    }
+    else {
+      return setTimeout(fn, delay);
+    }
   };
+
+  async.cancelImmediate = function(timer) {
+    if (!timer)
+      return;
+    if (isGecko) {
+      try {
+        timer.cancel();
+      } catch (ex) {}
+    } else {
+      clearTimeout(timer);
+    }
+  }
 
   async.each = function(arr, iterator, callback) {
     callback = callback || function() {};

@@ -2,21 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-"use strict";
-
 var Async, exports;
-if (typeof require == "function") {
-  Async = require("./Async.jsm").Async;
-  exports = module.exports;
-}
-else {
-  Component.utils.import("gre://content/modules/Async.jsm");
+var isGecko = !!(typeof Components != "undefined" && Components.utils);
+if (isGecko) {
+  Components.utils.import("resource://gre/modules/Async.jsm");
   exports = this;
-
   exports.EXPORTED_SYMBOLS = [
     "AsyncTest",
     "AsyncTestReporters"
   ];
+}
+else {
+  Async = require("./Async.jsm").Async;
+  exports = module.exports;
 }
 
 function makeAsync(args, fn, context) {
@@ -51,10 +49,12 @@ function Suite(aTests) {
   this.tests = aTests;
   var firstTest = aTests[0];
   var def = exports.AsyncTestReporters[exports.AsyncTest.DEFAULT_REPORTER];
-  this.reporter = exports.AsyncTestReporters[firstTest.reporter] || def;
-  this.name = firstTest.suiteName;
-  this.notify = firstTest.notify;
-  this.onEnd = firstTest.onEnd || function() {};
+  this.options = {
+    reporter: exports.AsyncTestReporters[firstTest.reporter] || def,
+    name: firstTest.suiteName,
+    notify: firstTest.notify,
+    onEnd: firstTest.onEnd || function() {}
+  };
   this.stats = {
     start: new Date(),
     tests: aTests.length,
@@ -68,6 +68,7 @@ Suite.STATE_START   = 0x0001;
 Suite.STATE_SKIPPED = 0x0002;
 Suite.STATE_DONE    = 0x0004;
 Suite.STATE_END     = 0x0008;
+Suite.STATE_TEST    = 0x0010;
 
 Suite.prototype = {
   run: function() {
@@ -76,18 +77,20 @@ Suite.prototype = {
 
     Async.eachSeries(this.tests, function(test, next) {
       var context = test.context || self;
+      if (!context.notify)
+        context.notify = self.notify.bind(self);
       var setUp = empty;
       if (test.setUp)
         setUp = makeAsync(0, test.setUp, context);
-      
+
       var tearDownCalled = false;
       var tearDownInner = empty;
       if (test.tearDown)
         tearDownInner = makeAsync(0, test.tearDown, context);
 
-      function tearDown(next) {
+      function tearDown(cb) {
         tearDownCalled = true;
-        tearDownInner.call(test.context, next);
+        tearDownInner.call(test.context, cb);
       }
 
       var testFn = makeAsync(0, test.fn, context);
@@ -96,11 +99,13 @@ Suite.prototype = {
         ? [test.setUpSuite, test.tearDownSuite]
         : [test.setUpSuite, setUp, testFn, tearDown, test.tearDownSuite];
 
+      self.report(Suite.STATE_TEST);
+
       Async.eachSeries(chain, function(fn, callback) {
         var called = false;
 
         // timeout to watch async processes running too long...
-        var timeout = setTimeout(function() {
+        var timeout = Async.setImmediate(function() {
           called = true;
           callback("Source did not respond after " + test.timeout + "ms!");
         }, test.timeout);
@@ -111,14 +116,14 @@ Suite.prototype = {
               if (called)
                 return;
               called = true;
-              clearTimeout(timeout);
+              Async.cancelImmediate(timeout);
               callback(err);
             });
           } catch (ex) {
             if (called)
               return;
             called = true;
-            clearTimeout(timeout);
+            Async.cancelImmediate(timeout);
             if (!tearDownCalled)
               tearDown(function() {});
             callback(ex);
@@ -147,25 +152,47 @@ Suite.prototype = {
         this.stats.failures++;
     } else if (aState & Suite.STATE_END) {
       this.stats.duration = new Date() - this.stats.start;
-      if (this.notify) {
-        var title = this.name || "Tests finished!";
-        var text = "Out of " + this.stats.tests + " " + pluralize(this.stats.tests) + ": " + 
-                   this.stats.passes + " passed, " + 
-                   this.stats.failures + " failed and " +
-                   this.stats.skipped + " skipped.";
-        try {
-          Components.classes["@mozilla.org/alerts-service;1"]
-                    .getService(Components.interfaces.nsIAlertsService)
-                    .showAlertNotification(null, title, text, false, "", null);
-        } catch(e) {
-          // prevents runtime error on platforms that don't implement nsIAlertsService
-        }
-      }
-      // defer firing the onEnd callback to allow writing to stdout to finish
-      Async.setImmediate(this.onEnd.bind(this));
+      if (this.options.notify)
+        this.notify(function() {});
     }
 
-    this.reporter(aState, aTest, this);
+    this.options.reporter(aState, aTest, this);
+
+    // defer firing the onEnd callback to allow writing to stdout to finish
+    // by the reporter above.
+    if (aState & Suite.STATE_END)
+      this.options.onEnd();
+  },
+
+  notify: function(callback) {
+    if (!isGecko)
+      return;
+    var title = this.options.name || "Tests finished!";
+    var text = "Out of " + this.stats.tests + " " + pluralize(this.stats.tests) + ": " + 
+               this.stats.passes + " passed, " + 
+               this.stats.failures + " failed and " +
+               this.stats.skipped + " skipped.";
+    try {
+      Growl.notify(title, text);
+      callback();
+    } catch (ex) {
+      try {
+        var observer = null;
+        if (callback) {
+          observer = {
+            observe: function(aSubject, aTopic, aData) {
+              if (aTopic == "alertfinished")
+                callback();
+            }
+          }
+        }
+        Components.classes["@mozilla.org/alerts-service;1"]
+                  .getService(Components.interfaces.nsIAlertsService)
+                  .showAlertNotification(null, title, text, false, "", observer);
+      } catch(ex) {
+        // prevents runtime error on platforms that don't implement nsIAlertsService
+      }
+    }
   }
 };
 
@@ -207,7 +234,7 @@ exports.AsyncTest = function(aSuite) {
       suiteName: aSuite.name || aSuite.tests.name || "",
       reporter: aSuite.reporter,
       notify: !!aSuite.notify,
-      name: name,
+      name: name.replace(/(^[>!\s]*|[\s]*$)/, ""),
       setUp: setUp,
       tearDown: tearDown,
       context: aSuite.tests,
@@ -258,11 +285,37 @@ var Colors = {
 /**
  * Default symbol map.
  */
-
 var Symbols = {
   ok: "✓",
   err: "✖",
   dot: "․"
+};
+
+/**
+ * Expose some basic cursor interactions
+ * that are common among reporters.
+ */
+Cursor = {
+  hide: function(){
+    log("\u001b[?25l");
+  },
+
+  show: function(){
+    log("\u001b[?25h");
+  },
+
+  deleteLine: function(){
+    log("\u001b[2K");
+  },
+
+  beginningOfLine: function(){
+    log("\u001b[0G");
+  },
+
+  CR: function(){
+    Cursor.deleteLine();
+    Cursor.beginningOfLine();
+  }
 };
 
 /**
@@ -423,6 +476,101 @@ function list(failures){
   });
 }
 
+var Growl = {
+  register: function(appIcon, notificationTypes) {
+    var data = "GNTP/1.0 REGISTER NONE\r\n" +
+               "Application-Name: Test Results\r\n" +
+               "Application-Icon: " + appIcon + "\r\n" +
+               "Notifications-Count: " + notificationTypes.length + "\r\n" +
+               "\r\n";
+    for (var i = 0; i < notificationTypes.length; i++) {
+      var nt = notificationTypes[i];
+      data += "Notification-Name: " + nt.name + "\r\n" +
+              "Notification-Display-Name: " + nt.displayName + "\r\n" +
+              "Notification-Enabled: True\r\n" +
+              "\r\n";
+    }
+    this.send(data);
+  },
+
+  notify: function(title, message, image) {
+    var data = "GNTP/1.0 NOTIFY NONE\r\n" +
+               "Application-Name: Test Results\r\n" +
+               "Notification-Name: end\r\n" +
+               "Notification-Title: " + title + "\r\n" +
+               "Notification-Text: " + message + "\r\n";
+    if (image)
+        data += "Notification-Icon: " + image + "\r\n"; 
+    data += "\r\n";
+    this.send(data);
+  },
+  
+  send: function(data) {
+    if (!isGecko)
+      return;
+    // first, we need a nsISocketTransportService ....
+    var transportService =
+        Components.classes["@mozilla.org/network/socket-transport-service;1"]
+                  .getService(Components.interfaces.nsISocketTransportService);
+
+    var bytes = stringToBytes(utf8encode(data));
+
+    var socket = transportService.createTransport(null, 0, "localhost", 23053, null);
+    socket.setTimeout(socket.TIMEOUT_READ_WRITE, 2);
+    var stream = socket.openOutputStream(0, 0, 0);
+    var binstream = Components.classes["@mozilla.org/binaryoutputstream;1"]
+                              .createInstance(Components.interfaces.nsIBinaryOutputStream);
+    binstream.setOutputStream(stream);
+    binstream.writeByteArray(bytes, bytes.length);
+    //binstream.close(); 
+    //socket.close(0); TODO: this causes the data to not be written for some reason
+  }
+}
+
+Growl.register("", [{name: "end", displayName: "Test Results"}]);
+
+function stringToBytes(str) {
+  var ch, st, re = [];
+  for (var i = 0; i < str.length; i++ ) {
+    ch = str.charCodeAt(i); // get char
+    st = []; // set up "stack"
+    do {
+      st.push(ch & 0xFF); // push byte to stack
+      ch = ch >> 8; // shift value down by 1 byte
+    }
+    while (ch);
+    // add stack contents to result
+    // done because chars have "wrong" endianness
+    re = re.concat(st.reverse());
+  }
+  // return an array of bytes
+  return re;
+}
+
+/**
+ * Encode multi-byte Unicode string into utf-8 multiple single-byte characters 
+ * Chars in range U+0080 - U+07FF are encoded in 2 chars, U+0800 - U+FFFF in 3 chars
+ * From: AES implementation in JavaScript (c) Chris Veness 2005-2010
+ * http://www.movable-type.co.uk/scripts/aes.html
+ *
+ * @param {String} strUni
+ */
+function utf8encode(strUni) {
+  var strUtf = strUni.replace(
+    /[\u0080-\u07ff]/g,  // U+0080 - U+07FF => 2 bytes 110yyyyy, 10zzzzzz
+    function(c) { 
+      var cc = c.charCodeAt(0);
+      return String.fromCharCode(0xc0 | cc>>6, 0x80 | cc&0x3f); }
+  );
+  strUtf = strUtf.replace(
+    /[\u0800-\uffff]/g,  // U+0800 - U+FFFF => 3 bytes 1110xxxx, 10yyyyyy, 10zzzzzz
+    function(c) { 
+      var cc = c.charCodeAt(0); 
+      return String.fromCharCode(0xe0 | cc>>12, 0x80 | cc>>6&0x3F, 0x80 | cc&0x3f); }
+  );
+  return strUtf;
+}
+
 exports.AsyncTestReporters = {
   "dot": function(aState, aTest, aSuite) {
     if (aState & Suite.STATE_START) {
@@ -460,7 +608,26 @@ exports.AsyncTestReporters = {
     }
   },
   "progress": function() {},
-  "spec": function() {},
-  "list": function() {},
-  "nyan": function() {}
+  "spec": function(aState, aTest, aSuite) {
+    if (aState & Suite.STATE_START) {
+      log(colorize("suite", "    " + aSuite.options.name) + "\n");
+    } else if (aState & Suite.STATE_TEST) {
+      log("    " + colorize("pass", "  ◦ " + aTest.name + ": "));
+    } else if (aState & Suite.STATE_DONE) {
+      if (aTest.skip) {
+        log(colorize("skipped", "  - " + aTest.name) + "\n");
+      } else if (aTest.passed) {
+        Cursor.CR();
+        log("    " + colorize("checkmark", "  " + Symbols.ok) +
+                    colorize("pass", " " + aTest.name + " ") + "\n");
+      } else {
+        Cursor.CR();
+        log("    " + colorize("fail", "  " + aTest.index + ") " + aTest.name) + "\n");
+      }
+    } else if (aState & Suite.STATE_END) {
+      log("\n");
+      epilogue(aSuite);
+    }
+  },
+  "list": function() {}
 };

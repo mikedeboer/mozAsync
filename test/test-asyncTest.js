@@ -51,7 +51,7 @@ AsyncTest.AsyncTest([
 
 {
   name: "Test tearDownSuite vs. tearDown",
-  reporter: "tap",
+  reporter: "spec",
   tearDownSuite: function() {
     if (!this.x)
       this.x = 0;
