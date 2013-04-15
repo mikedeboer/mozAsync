@@ -153,7 +153,7 @@ Suite.prototype = {
     } else if (aState & Suite.STATE_END) {
       this.stats.duration = new Date() - this.stats.start;
       if (this.options.notify)
-        this.notify(function() {});
+        this.notify();
     }
 
     this.options.reporter(aState, aTest, this);
@@ -164,7 +164,7 @@ Suite.prototype = {
       this.options.onEnd();
   },
 
-  notify: function(callback) {
+  notify: function() {
     if (!isGecko)
       return;
     var title = this.options.name || "Tests finished!";
@@ -174,25 +174,7 @@ Suite.prototype = {
                this.stats.skipped + " skipped.";
     try {
       Growl.notify(title, text);
-      callback();
-    } catch (ex) {
-      try {
-        var observer = null;
-        if (callback) {
-          observer = {
-            observe: function(aSubject, aTopic, aData) {
-              if (aTopic == "alertfinished")
-                callback();
-            }
-          }
-        }
-        Components.classes["@mozilla.org/alerts-service;1"]
-                  .getService(Components.interfaces.nsIAlertsService)
-                  .showAlertNotification(null, title, text, false, "", observer);
-      } catch(ex) {
-        // prevents runtime error on platforms that don't implement nsIAlertsService
-      }
-    }
+    } catch (ex) { }
   }
 };
 
@@ -252,7 +234,7 @@ exports.AsyncTest = function(aSuite) {
       onEnd: aSuite.onEnd || function() {}
     };
   }));
-  
+
   if (aSuite.skipAutorun)
     return suite;
   return suite.run();
@@ -500,7 +482,7 @@ var Growl = {
                "Notification-Title: " + title + "\r\n" +
                "Notification-Text: " + message + "\r\n";
     if (image)
-        data += "Notification-Icon: " + image + "\r\n"; 
+      data += "Notification-Icon: " + image + "\r\n"; 
     data += "\r\n";
     this.send(data);
   },
@@ -607,24 +589,47 @@ exports.AsyncTestReporters = {
           "# fail " + aSuite.stats.failures + "\n");
     }
   },
-  "progress": function() {},
+  "progress": function(aState, aTest, aSuite) {
+    options.open = options.open || '[';
+    options.complete = options.complete || '▬';
+    options.incomplete = options.incomplete || Base.symbols.dot;
+    options.close = options.close || ']';
+    options.verbose = false;
+    
+    if (aState & Suite.STATE_START) {
+      log("\n");
+      Cursor.hide();
+      log(colorize("suite", "    " + aSuite.options.name) + "\n");
+    } else if (aState & Suite.STATE_DONE) {
+      
+    } else if (aState & Suite.STATE_END) {
+      log("\n");
+      epilogue(aSuite);
+    }
+  },
   "spec": function(aState, aTest, aSuite) {
     if (aState & Suite.STATE_START) {
       log(colorize("suite", "    " + aSuite.options.name) + "\n");
     } else if (aState & Suite.STATE_TEST) {
       log("    " + colorize("pass", "  ◦ " + aTest.name + ": "));
     } else if (aState & Suite.STATE_DONE) {
-      if (aTest.skip) {
-        log(colorize("skipped", "  - " + aTest.name) + "\n");
-      } else if (aTest.passed) {
-        Cursor.CR();
-        log("    " + colorize("checkmark", "  " + Symbols.ok) +
-                    colorize("pass", " " + aTest.name + " ") + "\n");
-      } else {
-        Cursor.CR();
-        log("    " + colorize("fail", "  " + aTest.index + ") " + aTest.name) + "\n");
+      complete++;
+      var incomplete = total - complete
+        , percent = complete / total
+        , n = width * percent | 0
+        , i = width - n;
+
+      cursor.CR();
+      process.stdout.write('\u001b[J');
+      process.stdout.write(color('progress', '  ' + options.open));
+      process.stdout.write(Array(n).join(options.complete));
+      process.stdout.write(Array(i).join(options.incomplete));
+      process.stdout.write(color('progress', options.close));
+      if (options.verbose) {
+        process.stdout.write(color('progress', ' ' + complete + ' of ' + total));
       }
     } else if (aState & Suite.STATE_END) {
+      Cursor.show();
       log("\n");
       epilogue(aSuite);
     }
