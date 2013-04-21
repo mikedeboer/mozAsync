@@ -36,7 +36,8 @@ exports.Async = (function() {
   async.setImmediate = function(fn, delay) {
     delay = delay || 0;
     if (isGecko) {
-      var timer = Components.classes["@mozilla.org/timer;1"].createInstance(Components.interfaces.nsITimer);
+      var timer = Components.classes["@mozilla.org/timer;1"]
+                            .createInstance(Components.interfaces.nsITimer);
       timer.initWithCallback(fn, delay, Components.interfaces.nsITimer.TYPE_ONE_SHOT);
       return timer;
     }

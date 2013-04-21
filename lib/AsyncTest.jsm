@@ -39,10 +39,10 @@ function empty(aNext) {
 }
 
 function log(aMsg) {
-  if (typeof process != "undefined") {
-    return process.stdout.write(aMsg);
+  if (isGecko) {
+    return dump(aMsg);
   }
-  dump(aMsg);
+  process.stdout.write(aMsg);
 }
 
 function Suite(aTests) {
@@ -486,7 +486,7 @@ var Growl = {
     data += "\r\n";
     this.send(data);
   },
-  
+
   send: function(data) {
     if (!isGecko)
       return;
@@ -513,14 +513,13 @@ Growl.register("", [{name: "end", displayName: "Test Results"}]);
 
 function stringToBytes(str) {
   var ch, st, re = [];
-  for (var i = 0; i < str.length; i++ ) {
+  for (var i = 0; i < str.length; i++) {
     ch = str.charCodeAt(i); // get char
     st = []; // set up "stack"
     do {
       st.push(ch & 0xFF); // push byte to stack
       ch = ch >> 8; // shift value down by 1 byte
-    }
-    while (ch);
+    } while (ch);
     // add stack contents to result
     // done because chars have "wrong" endianness
     re = re.concat(st.reverse());
