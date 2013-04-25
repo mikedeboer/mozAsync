@@ -1403,7 +1403,7 @@ But more importantly, there are several things that usually need to happen befor
     * setUp - run once before each test
     * tearDownSuite - run only once when all tests are done
     * tearDown - run once after each test
- * These functions are executed in the context of the tests, so the this is the same as the this in test functions
+ * These functions are executed in the context of the tests, so the `this` is the same as the `this` in test functions
 
 This takes care of all the flows a test suite might need to implement.
 
