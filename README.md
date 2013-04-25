@@ -1399,12 +1399,12 @@ There are a couple of interesting things going on here:
 * You can choose the style of reporting by setting the reporter property to `dot` or `tap`. The reporters `progress` and `spec` are under development. More information about what 'TAP' is can be found at: http://testanything.org
 
 But more importantly, there are several things that usually need to happen before a test can be run, like opening a tab, load a page and wait for it to load, etc. AsyncTest unifies scenarios like this in the following way:
-* Each suite may have one or more of the following functions:
-** setUpSuite - run only once before any test is executed
-** setUp - run once before each test
-** tearDownSuite - run only once when all tests are done
-** tearDown - run once after each test
-* These functions are executed in the context of the tests, so the this is the same as the this in test functions
+ * Each suite may have one or more of the following functions:
+    * setUpSuite - run only once before any test is executed
+    * setUp - run once before each test
+    * tearDownSuite - run only once when all tests are done
+    * tearDown - run once after each test
+ * These functions are executed in the context of the tests, so the this is the same as the this in test functions
 
 This takes care of all the flows a test suite might need to implement.
 
