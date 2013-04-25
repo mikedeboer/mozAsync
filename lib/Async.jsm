@@ -2,6 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/*
+ * This module is a direct port of the awesome Async library by Caolan McMahon
+ * and contributors. License: MIT. More information can be found at 
+ * https://github.com/caolan/async.
+ *
+ * You can find more documentation of this library at:
+ * https://github.com/mikedeboer/mozAsync#asyncjsm
+ */
+
 var exports;
 var isGecko = !!(typeof Components != "undefined" && Components.utils);
 if (isGecko) {
