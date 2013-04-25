@@ -1410,8 +1410,8 @@ This takes care of all the flows a test suite might need to implement.
 
 __Another Example__
 
-* [mikedeboer/mozAsync/blob/master/examples/browser_aboutHome.orig.js]
-* [mikedeboer/mozAsync/blob/master/examples/browser_aboutHome.js]
+ * [/browser/base/content/test/browser_aboutHome.js (original)](https://github.com/mikedeboer/mozAsync/blob/master/examples/browser_aboutHome.orig.js)
+ * [/browser/base/content/test/browser_aboutHome.js](https://github.com/mikedeboer/mozAsync/blob/master/examples/browser_aboutHome.js)
 
 This is the browser_aboutHome.js unit test code vs. a rewritten version with AsyncTest.
 
