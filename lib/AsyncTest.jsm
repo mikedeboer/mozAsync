@@ -8,7 +8,10 @@
  * 2) https://github.com/visionmedia/mocha (license: MIT)
  *
  * Especially Mocha is an all-round and versatile test runner, which inpired
- * this library to have reporter modules.
+ * this library to have reporter modules to control test output.
+ *
+ * You can find more documentation of this library at:
+ * https://github.com/mikedeboer/mozAsync#asynctestjsm
  */
 
 var Async, exports;
