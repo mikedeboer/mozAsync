@@ -1352,3 +1352,73 @@ var hello = function(name, callback){
 js> Async.log(hello, "world");
 "hello world"
 ```
+
+---------------------------------------
+
+# AsyncTest.jsm
+
+AsyncTest is a unit test library that provides a clear, unified API to create unit tests that is as easy to use for sync code flows as for async ones.
+It is designed to be best friends with MochiTest and XPCShell tests.
+
+Unit tests are 'hot' code. They are modified as often - perhaps even more - as functionality it covers changes, especially in TDD environments. They serve as documentation for the code they cover. When tests fail, they usually don't on 'your computer', but somewhere else, like on the build infrastructure. When that happens, someone will open the unit test and try to understand what is going on. In all these cases it is hugely beneficial to a) know that most of the unit tests are written in the same structure and b) are structured in such a way that they're easy to read by someone other than you.
+
+__Example__
+
+```js
+This is an example of a minimal test:
+
+AsyncTest([
+{
+  name: "Minimal Test",
+  reporter: "tap",
+  tests: {
+    "it should execute this test": function(next) {
+      Assert.equal(typeof next, "function", "'next' should be a callback function");
+      next();
+    },
+    "! it should NOT execute this test": function(next) {
+      Assert.ok(false, "BAM!");
+      next();
+    },
+    "it should be aware of the correct context": function() {
+      Assert.ok(this["it should execute this test"], "The function ought to be accessible");
+    }
+  }
+}
+]);
+```
+
+There are a couple of interesting things going on here:
+* You can pass an Array of test suites or just one Object
+* Suites can have names
+* Tests can be described freely
+* It mixes fine with ANY assertion style (Mochi or XPCShell)
+* Prefix a test with `!` to exclude it from the suite during a TDD cycle
+* Prefix a test with `>` to only run that test and ignore the others during a TDD cycle
+* If the test is sync, you can forget about the next function (callback) completely - the framework takes care of it; you can even mix async and non-async tests
+* You can choose the style of reporting by setting the reporter property to `dot` or `tap`. The reporters `progress` and `spec` are under development. More information about what 'TAP' is can be found at: http://testanything.org
+
+But more importantly, there are several things that usually need to happen before a test can be run, like opening a tab, load a page and wait for it to load, etc. AsyncTest unifies scenarios like this in the following way:
+* Each suite may have one or more of the following functions:
+** setUpSuite - run only once before any test is executed
+** setUp - run once before each test
+** tearDownSuite - run only once when all tests are done
+** tearDown - run once after each test
+* These functions are executed in the context of the tests, so the this is the same as the this in test functions
+
+This takes care of all the flows a test suite might need to implement.
+
+__Another Example__
+
+* [mikedeboer/mozAsync/blob/master/examples/browser_aboutHome.orig.js]
+* [mikedeboer/mozAsync/blob/master/examples/browser_aboutHome.js]
+
+This is the browser_aboutHome.js unit test code vs. a rewritten version with AsyncTest.
+
+The NLOC difference is minimal (~100 lines), but the more significant improvement here is the structure that is proposed as uniform.
+
+---------------------------------------
+
+To top this off, you can set a flag in each suite: `notify: true` to present you with a Growl notification once the suite is done to report the results!
+
+That shows that this library is meant to bring back the fun into creating unit tests.

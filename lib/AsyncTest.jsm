@@ -2,6 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/*
+ * This module is inspired by two projects:
+ * 1) https://github.com/fjakobs/async.js/blob/master/lib/test.js (license: MIT)
+ * 2) https://github.com/visionmedia/mocha (license: MIT)
+ *
+ * Especially Mocha is an all-round and versatile test runner, which inpired
+ * this library to have reporter modules.
+ */
+
 var Async, exports;
 var isGecko = !!(typeof Components != "undefined" && Components.utils);
 if (isGecko) {
