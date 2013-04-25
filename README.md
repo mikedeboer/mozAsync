@@ -1364,9 +1364,8 @@ Unit tests are 'hot' code. They are modified as often - perhaps even more - as f
 
 __Example__
 
-```js
 This is an example of a minimal test:
-
+```js
 AsyncTest([
 {
   name: "Minimal Test",
